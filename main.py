@@ -216,4 +216,12 @@ def run():
 
 if __name__ == '__main__':
     run()
+import os
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 10000))
+    server_address = ('', port)
+    httpd = HTTPServer(server_address, FactoryHandler)
+    print(f"🚀 خادم مصنع صيانة البرمجيات يعمل على المنفذ {port}...")
+    httpd.serve_forever()
 
