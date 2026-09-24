@@ -380,3 +380,9 @@ def run():
 
 if __name__ == '__main__':
     run()
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 10000))
+    server_address = ('0.0.0.0', port)  # تم التعديل هنا لربط السيرفر بالشبكة الخارجية
+    httpd = HTTPServer(server_address, FactoryHandler)
+    print(f"Starting server on port {port}...")
+    httpd.serve_forever()
