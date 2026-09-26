@@ -2,6 +2,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 import os
 import json
 import sqlite3
+import urllib.parse
 
 def init_db():
     conn = sqlite3.connect('factory.db')
@@ -44,7 +45,7 @@ init_db()
 
 class FactoryHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        # 1. واجهة العملاء لمنصة Medvedev
+        # 1. واجهة العملاء لمنصة Medvedev مع زر تبديل اللغات وتعديل السعر إلى 100$
         if self.path == '/' or self.path == '':
             self.send_response(200)
             self.send_header('Content-type', 'text/html; charset=utf-8')
@@ -52,14 +53,14 @@ class FactoryHandler(BaseHTTPRequestHandler):
             
             html_content = """
             <!DOCTYPE html>
-            <html lang="ar" dir="rtl">
+            <html lang="ar" dir="rtl" id="html-root">
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>منصة Medvedev - صيانة البرمجيات والذكاء الاصطناعي</title>
+                <title id="page-title">منصة Medvedev - صيانة البرمجيات والذكاء الاصطناعي</title>
                 <style>
-                    body { font-family: Tahoma, sans-serif; background-color: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
-                    .container { max-width: 900px; margin: auto; background: #1e293b; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+                    body { font-family: Tahoma, sans-serif; background-color: #0f172a; color: #f8fafc; margin: 0; padding: 20px; transition: all 0.3s ease; }
+                    .container { max-width: 900px; margin: auto; background: #1e293b; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); position: relative; }
                     h1, h2 { color: #38bdf8; text-align: center; }
                     .card { background: #334155; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
                     .btn { background: #0284c7; color: white; padding: 12px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; width: 100%; font-weight: bold; }
@@ -78,32 +79,102 @@ class FactoryHandler(BaseHTTPRequestHandler):
                     .payment-option input { margin-left: 8px; }
                     .admin-link { text-align: center; margin-top: 20px; }
                     .admin-link a { color: #38bdf8; text-decoration: none; font-weight: bold; }
+                    /* زر تبديل اللغة */
+                    .lang-switcher { position: absolute; top: 20px; left: 20px; display: flex; gap: 5px; }
+                    .lang-btn { background: #475569; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+                    .lang-btn.active { background: #38bdf8; color: #0f172a; }
                 </style>
                 <script>
+                    let currentLang = 'ar';
+
                     function selectService(type) {
                         document.getElementById('service_type').value = type;
                         if(type === 'emergency') {
                             document.getElementById('tab-emergency').classList.add('active');
                             document.getElementById('tab-sub').classList.remove('active');
-                            document.getElementById('desc-text').innerHTML = '⚡ <strong>صيانة الطوارئ الفورية (المهمة المنفردة):</strong><br>بحد أقصى <strong>20 مشكلة يومياً لكل نوع</strong>، وتشمل: <ul><li>المنطق البرمجي</li><li>قواعد البيانات</li><li>الـ APIs</li><li>ثغرات الأمان والتشفير</li><li>تحديث المكتبات</li></ul><span class="price-tag">التكلفة: 150 دولار أمريكي للمهمة</span>';
+                            if(currentLang === 'ar') {
+                                document.getElementById('desc-text').innerHTML = '⚡ <strong>صيانة الطوارئ الفورية (المهمة المنفردة):</strong><br>بحد أقصى <strong>20 مشكلة يومياً لكل نوع</strong>، وتشمل: <ul><li>المنطق البرمجي</li><li>قواعد البيانات</li><li>الـ APIs</li><li>ثغرات الأمان والتشفير</li><li>تحديث المكتبات</li></ul><span class="price-tag">التكلفة: 100 دولار أمريكي للمهمة</span>';
+                            } else {
+                                document.getElementById('desc-text').innerHTML = '⚡ <strong>Emergency Fix (Single Task):</strong><br>Max <strong>20 issues daily per type</strong>, including: <ul><li>Logic bugs</li><li>Databases</li><li>APIs</li><li>Security & Encryption</li><li>Libraries updates</li></ul><span class="price-tag">Cost: $100 USD per task</span>';
+                            }
                         } else {
                             document.getElementById('tab-sub').classList.add('active');
                             document.getElementById('tab-emergency').classList.remove('active');
-                            document.getElementById('desc-text').innerHTML = '📦 <strong>الاشتراك الشهري الشامل (B2B):</strong><br>بحد أقصى <strong>100 مشكلة يومياً لكل نوع</strong>، وتشمل: <ul><li>المنطق البرمجي</li><li>قواعد البيانات</li><li>الـ APIs</li><li>ثغرات الأمان والتشفير</li><li>تحديث المكتبات</li><li>أخطاء الواجهات الأمامية (Frontend)</li></ul><span class="price-tag">التكلفة: 10,000 دولار أمريكي / شهرياً</span>';
+                            if(currentLang === 'ar') {
+                                document.getElementById('desc-text').innerHTML = '📦 <strong>الاشتراك الشهري الشامل (B2B):</strong><br>بحد أقصى <strong>100 مشكلة يومياً لكل نوع</strong>، وتشمل: <ul><li>المنطق البرمجي</li><li>قواعد البيانات</li><li>الـ APIs</li><li>ثغرات الأمان والتشفير</li><li>تحديث المكتبات</li><li>أخطاء الواجهات الأمامية (Frontend)</li></ul><span class="price-tag">التكلفة: 10,000 دولار أمريكي / شهرياً</span>';
+                            } else {
+                                document.getElementById('desc-text').innerHTML = '📦 <strong>Comprehensive B2B Subscription:</strong><br>Max <strong>100 issues daily per type</strong>, including: <ul><li>Logic bugs</li><li>Databases</li><li>APIs</li><li>Security & Encryption</li><li>Libraries updates</li><li>Frontend errors</li></ul><span class="price-tag">Cost: $10,000 USD / Month</span>';
+                            }
                         }
+                    }
+
+                    function switchLanguage(lang) {
+                        currentLang = lang;
+                        const root = document.getElementById('html-root');
+                        root.lang = lang;
+                        root.dir = lang === 'ar' ? 'rtl' : 'ltr';
+
+                        // تحديث الأزرار النشطة للغة
+                        document.getElementById('btn-ar').classList.toggle('active', lang === 'ar');
+                        document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+
+                        if(lang === 'en') {
+                            document.getElementById('page-title').innerText = "Medvedev Platform - Software Maintenance & AI";
+                            document.getElementById('main-heading').innerText = "🚀 Medvedev Platform";
+                            document.getElementById('sub-heading').innerText = "Advanced cloud system for software maintenance & AI diagnostics";
+                            document.getElementById('client-portal-title').innerText = "🛠️ Client Portal, Maintenance & Payment";
+                            document.getElementById('tab-emergency').innerText = "⚡ Emergency Fix ($100)";
+                            document.getElementById('tab-sub').innerText = "📦 Comprehensive Sub ($10,000)";
+                            document.getElementById('company_name_input').placeholder = "Company or Client Name";
+                            document.getElementById('payment_label').innerText = "Select Preferred Payment Method:";
+                            document.getElementById('code_textarea').placeholder = "Paste your code snippet here for AI inspection and debugging...";
+                            document.getElementById('submit_btn').innerText = "Complete Order & Secure Payment";
+                            document.getElementById('ai-support-title').innerText = "🤖 Medvedev AI Support Assistant";
+                            document.getElementById('ai-support-desc').innerText = "Ask any question regarding pricing, plans, or usage and the AI assistant will reply instantly:";
+                            document.getElementById('customer_name_input').placeholder = "Your Full Name";
+                            document.getElementById('msg_input').placeholder = "Type your question or inquiry here...";
+                            document.getElementById('ai_submit_btn').innerText = "Send Question to AI Assistant";
+                            document.getElementById('admin_link_text').innerText = "🔐 Go to Admin Dashboard & Invoices";
+                        } else {
+                            document.getElementById('page-title').innerText = "منصة Medvedev - صيانة البرمجيات والذكاء الاصطناعي";
+                            document.getElementById('main-heading').innerText = "🚀 منصة Medvedev";
+                            document.getElementById('sub-heading').innerText = "النظام السحابي المتقدم لصيانة وبرمجة الشركات مع محرك الذكاء الاصطناعي";
+                            document.getElementById('client-portal-title').innerText = "🛠️ بوابة العملاء وطلب الصيانة والدفع";
+                            document.getElementById('tab-emergency').innerText = "⚡ صيانة طوارئ منفردة (100$)";
+                            document.getElementById('tab-sub').innerText = "📦 اشتراك شامل (10,000$)";
+                            document.getElementById('company_name_input').placeholder = "اسم الشركة أو العميل";
+                            document.getElementById('payment_label').innerText = "اختر طريقة الدفع المفضلة:";
+                            document.getElementById('code_textarea').placeholder = "الصق الكود البرمجي هنا للفحص والتحليل بالذكاء الاصطناعي...";
+                            document.getElementById('submit_btn').innerText = "إتمام الطلب والدفع بأمان";
+                            document.getElementById('ai-support-title').innerText = "🤖 مساعد الدعم الفني الذكي (Medvedev AI Support)";
+                            document.getElementById('ai-support-desc').innerText = "اطرح أي سؤال بخصوص الباقات، الدفع، أو طريقة الاستخدام وسيقوم المساعد الذكي بالرد عليك فوراً:";
+                            document.getElementById('customer_name_input').placeholder = "اسمك الكريم";
+                            document.getElementById('msg_input').placeholder = "اكتب سؤالك أو استفسارك هنا...";
+                            document.getElementById('ai_submit_btn').innerText = "إرسال السؤال إلى مساعد الذكاء الاصطناعي";
+                            document.getElementById('admin_link_text').innerText = "🔐 انتقل إلى لوحة تحكم المدير والأرباح والفواتير";
+                        }
+                        // تحديث وصف الباقة المختارة حالياً
+                        let activeType = document.getElementById('service_type').value;
+                        selectService(activeType);
                     }
                 </script>
             </head>
             <body>
                 <div class="container">
-                    <h1>🚀 منصة Medvedev</h1>
-                    <p style="text-align: center; color: #94a3b8;">النظام السحابي المتقدم لصيانة وبرمجة الشركات مع محرك الذكاء الاصطناعي</p>
+                    <!-- أزرار تبديل اللغة -->
+                    <div class="lang-switcher">
+                        <button id="btn-ar" class="lang-btn active" onclick="switchLanguage('ar')">AR</button>
+                        <button id="btn-en" class="lang-btn" onclick="switchLanguage('en')">EN</button>
+                    </div>
+
+                    <h1 id="main-heading">🚀 منصة Medvedev</h1>
+                    <p id="sub-heading" style="text-align: center; color: #94a3b8;">النظام السحابي المتقدم لصيانة وبرمجة الشركات مع محرك الذكاء الاصطناعي</p>
                     
                     <!-- قسم طلب الصيانة والدفع -->
                     <div class="card">
-                        <h2>🛠️ بوابة العملاء وطلب الصيانة والدفع</h2>
+                        <h2 id="client-portal-title">🛠️ بوابة العملاء وطلب الصيانة والدفع</h2>
                         <div class="tabs">
-                            <div id="tab-emergency" class="tab active" onclick="selectService('emergency')">⚡ صيانة طوارئ منفردة (150$)</div>
+                            <div id="tab-emergency" class="tab active" onclick="selectService('emergency')">⚡ صيانة طوارئ منفردة (100$)</div>
                             <div id="tab-sub" class="tab" onclick="selectService('subscription')">📦 اشتراك شامل (10,000$)</div>
                         </div>
                         <p id="desc-text" class="service-desc">
@@ -116,14 +187,14 @@ class FactoryHandler(BaseHTTPRequestHandler):
                                 <li>ثغرات الأمان والتشفير</li>
                                 <li>تحديث المكتبات</li>
                             </ul>
-                            <span class="price-tag">التكلفة: 150 دولار أمريكي للمهمة</span>
+                            <span class="price-tag">التكلفة: 100 دولار أمريكي للمهمة</span>
                         </p>
                         
                         <form action="/submit-task" method="POST">
                             <input type="hidden" id="service_type" name="service_type" value="emergency">
-                            <input type="text" name="company_name" placeholder="اسم الشركة أو العميل" required>
+                            <input type="text" id="company_name_input" name="company_name" placeholder="اسم الشركة أو العميل" required>
                             
-                            <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #38bdf8;">اختر طريقة الدفع المفضلة:</label>
+                            <label id="payment_label" style="display: block; margin-bottom: 5px; font-weight: bold; color: #38bdf8;">اختر طريقة الدفع المفضلة:</label>
                             <div class="payment-grid">
                                 <label class="payment-option"><input type="radio" name="payment_method" value="PayPal" checked> 🅿️ PayPal</label>
                                 <label class="payment-option"><input type="radio" name="payment_method" value="Credit Card"> 💳 بطاقة ائتمانية (Stripe / Visa / Master)</label>
@@ -131,24 +202,24 @@ class FactoryHandler(BaseHTTPRequestHandler):
                                 <label class="payment-option"><input type="radio" name="payment_method" value="Crypto"> 🪙 العملات الرقمية (USDT / Crypto)</label>
                             </div>
 
-                            <textarea name="code_snippet" placeholder="الصق الكود البرمجي هنا للفحص والتحليل بالذكاء الاصطناعي..." required></textarea>
-                            <button type="submit" class="btn">إتمام الطلب والدفع بأمان</button>
+                            <textarea id="code_textarea" name="code_snippet" placeholder="الصق الكود البرمجي هنا للفحص والتحليل بالذكاء الاصطناعي..." required></textarea>
+                            <button type="submit" id="submit_btn" class="btn">إتمام الطلب والدفع بأمان</button>
                         </form>
                     </div>
 
                     <!-- قسم مساعد الدعم الفني الذكي -->
                     <div class="card">
-                        <h2>🤖 مساعد الدعم الفني الذكي (Medvedev AI Support)</h2>
-                        <p style="color: #94a3b8; font-size: 13px;">اطرح أي سؤال بخصوص الباقات، الدفع، أو طريقة الاستخدام وسيقوم المساعد الذكي بالرد عليك فوراً:</p>
+                        <h2 id="ai-support-title">🤖 مساعد الدعم الفني الذكي (Medvedev AI Support)</h2>
+                        <p id="ai-support-desc" style="color: #94a3b8; font-size: 13px;">اطرح أي سؤال بخصوص الباقات، الدفع، أو طريقة الاستخدام وسيقوم المساعد الذكي بالرد عليك فوراً:</p>
                         <form action="/support-chat" method="POST">
-                            <input type="text" name="customer_name" placeholder="اسمك الكريم" required>
-                            <input type="text" name="message" placeholder="اكتب سؤالك أو استفسارك هنا..." required>
-                            <button type="submit" class="btn" style="background: #10b981;">إرسال السؤال إلى مساعد الذكاء الاصطناعي</button>
+                            <input type="text" id="customer_name_input" name="customer_name" placeholder="اسمك الكريم" required>
+                            <input type="text" id="msg_input" name="message" placeholder="اكتب سؤالك أو استفسارك هنا..." required>
+                            <button type="submit" id="ai_submit_btn" class="btn" style="background: #10b981;">إرسال السؤال إلى مساعد الذكاء الاصطناعي</button>
                         </form>
                     </div>
                     
                     <div class="admin-link">
-                        <a href="/admin">🔐 انتقل إلى لوحة تحكم المدير والأرباح والفواتير</a>
+                        <a href="/admin" id="admin_link_text">🔐 انتقل إلى لوحة تحكم المدير والأرباح والفواتير</a>
                     </div>
                 </div>
             </body>
@@ -255,7 +326,6 @@ class FactoryHandler(BaseHTTPRequestHandler):
         
         # 3. معالجة دفع الفواتير بضغطة زر
         elif self.path.startswith('/pay-invoice'):
-            import urllib.parse
             parsed_url = urllib.parse.urlparse(self.path)
             query_params = urllib.parse.parse_qs(parsed_url.query)
             title = query_params.get('title', [''])[0]
@@ -275,7 +345,7 @@ class FactoryHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
     def do_POST(self):
-        # 1. إرسال مهام الصيانة والتحليل في منصة Medvedev
+        # 1. إرسال مهام الصيانة والتحليل في منصة Medvedev (تعديل السعر إلى 100$)
         if self.path == '/submit-task':
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length).decode('utf-8')
@@ -284,7 +354,6 @@ class FactoryHandler(BaseHTTPRequestHandler):
             for item in post_data.split('&'):
                 if '=' in item:
                     k, v = item.split('=', 1)
-                    import urllib.parse
                     params[k] = urllib.parse.unquote_plus(v)
             
             company = params.get('company_name', 'شركة مجهولة')
@@ -293,7 +362,7 @@ class FactoryHandler(BaseHTTPRequestHandler):
             code = params.get('code_snippet', '')
             
             if stype == 'emergency':
-                service_name = "صيانة طوارئ منفردة (150$ - 20 مشكلة يومياً لكل نوع)"
+                service_name = "صيانة طوارئ منفردة (100$ - 20 مشكلة يومياً لكل نوع)"
             else:
                 service_name = "اشتراك شامل B2B (10,000$/شهر - 100 مشكلة يومياً لكل نوع)"
 
@@ -335,13 +404,12 @@ class FactoryHandler(BaseHTTPRequestHandler):
             for item in post_data.split('&'):
                 if '=' in item:
                     k, v = item.split('=', 1)
-                    import urllib.parse
                     params[k] = urllib.parse.unquote_plus(v)
             
             customer = params.get('customer_name', 'زائر')
             msg = params.get('message', '')
             
-            ai_reply = f"مرحباً {customer}! أهلاً بك في دعم منصة Medvedev. بناءً على استفسارك ({msg})، نود إعلامك أن منصتنا توفر صيانة طوارئ بحد 20 مشكلة يومياً لكل نوع بقيمة 150$، واشتراك شامل بحد 100 مشكلة يومياً بقيمة 10,000$، مع دعم كامل لـ PayPal، البطاقات، التحويل، والعملات الرقمية."
+            ai_reply = f"مرحباً {customer}! أهلاً بك في دعم منصة Medvedev. بناءً على استفسارك ({msg}), نود إعلامك أن منصتنا توفر صيانة طوارئ بحد 20 مشكلة يومياً لكل نوع بقيمة 100$، واشتراك شامل بحد 100 مشكلة يومياً بقيمة 10,000$، مع دعم كامل لـ PayPal، البطاقات، التحويل، والعملات الرقمية."
 
             conn = sqlite3.connect('factory.db')
             cursor = conn.cursor()
@@ -380,9 +448,3 @@ def run():
 
 if __name__ == '__main__':
     run()
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 10000))
-    server_address = ('0.0.0.0', port)  # تم التعديل هنا لربط السيرفر بالشبكة الخارجية
-    httpd = HTTPServer(server_address, FactoryHandler)
-    print(f"Starting server on port {port}...")
-    httpd.serve_forever()
